@@ -1,0 +1,10 @@
+mod layout;
+mod storage;
+// The inner module shares the name of the parent — intentional: the public
+// type `Tensor` is the defining export of the `tensor` module.
+#[allow(clippy::module_inception)]
+mod tensor;
+
+pub use layout::Layout;
+pub use storage::{Device, DType, Storage};
+pub use tensor::Tensor;

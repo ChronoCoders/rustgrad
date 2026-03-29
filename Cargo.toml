@@ -1,0 +1,22 @@
+[package]
+name = "rustgrad"
+version = "0.1.0"
+edition = "2021"
+authors = ["ChronoCoders <altug@bytus.io>"]
+description = "High-performance ML-first tensor and autograd engine in Rust"
+license = "MIT"
+repository = "https://github.com/ChronoCoders/rustgrad"
+
+[dependencies]
+indexmap = "2.2"
+faer = "0.19"
+rand = "0.8"
+safetensors = "0.4"
+
+[dev-dependencies]
+approx = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
