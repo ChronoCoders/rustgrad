@@ -1,7 +1,6 @@
 pub mod binary;
 pub mod reduction;
-
-// STUB: milestone 7 — shape.rs
+pub mod shape;
 // STUB: milestone 8 — matmul.rs
 // STUB: milestone 10 — unary.rs
 // STUB: milestone 11 — norm.rs

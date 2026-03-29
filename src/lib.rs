@@ -23,4 +23,5 @@ pub use autograd::{backward, Context, GradFn, Node, NodeId, Tape, TensorStore};
 pub use backend::{Backend, CpuBackend};
 pub use ops::binary::{add, div, mul, sub};
 pub use ops::reduction::{mean, sum};
+pub use ops::shape::{permute, reshape, squeeze, transpose, unsqueeze};
 pub use tensor::{Device, DType, Layout, Storage, Tensor};
