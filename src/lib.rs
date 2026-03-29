@@ -21,4 +21,5 @@ pub mod tensor;
 // Top-level re-exports for ergonomic use.
 pub use autograd::{backward, Context, GradFn, Node, NodeId, Tape, TensorStore};
 pub use backend::{Backend, CpuBackend};
+pub use ops::binary::{add, div, mul, sub};
 pub use tensor::{Device, DType, Layout, Storage, Tensor};

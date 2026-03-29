@@ -228,6 +228,81 @@ impl Layout {
             }
         }
     }
+    // ── Broadcasting ─────────────────────────────────────────────────────
+
+    /// Compute the output shape for broadcasting two shapes together.
+    ///
+    /// Follows NumPy rules: align from the right, each dim must be equal or
+    /// one of the two must be 1.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the shapes are not broadcast-compatible.
+    pub fn broadcast_shapes(a: &[usize], b: &[usize]) -> Vec<usize> {
+        let len = a.len().max(b.len());
+        (0..len)
+            .map(|i| {
+                let da = if i < len - a.len() { 1 } else { a[i - (len - a.len())] };
+                let db = if i < len - b.len() { 1 } else { b[i - (len - b.len())] };
+                match (da, db) {
+                    (x, y) if x == y => x,
+                    (1, y) => y,
+                    (x, 1) => x,
+                    (x, y) => panic!(
+                        "broadcast_shapes: shapes {:?} and {:?} are not compatible \
+                         (dimension {} has sizes {} and {})",
+                        a, b, i, x, y
+                    ),
+                }
+            })
+            .collect()
+    }
+
+    /// Return a new layout that broadcasts `self` to `target_shape`.
+    ///
+    /// Dimensions that are 1 in `self` but larger in `target_shape` get
+    /// stride 0 — the same element is reused along that axis.
+    /// Missing leading dimensions are treated as size 1 (stride 0).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` is not broadcast-compatible with `target_shape`.
+    pub fn broadcast_to(&self, target_shape: &[usize]) -> Self {
+        let src_len = self.shape.len();
+        let tgt_len = target_shape.len();
+        assert!(
+            tgt_len >= src_len,
+            "broadcast_to: target rank {} is less than source rank {}",
+            tgt_len,
+            src_len
+        );
+        let pad = tgt_len - src_len;
+        let new_strides: Vec<usize> = target_shape
+            .iter()
+            .enumerate()
+            .map(|(i, &tgt_size)| {
+                if i < pad {
+                    // Prepended dimension — size 1 with stride 0.
+                    0
+                } else {
+                    let src_dim = i - pad;
+                    let src_size = self.shape[src_dim];
+                    assert!(
+                        src_size == tgt_size || src_size == 1,
+                        "broadcast_to: source size {} at dim {} is not compatible \
+                         with target size {}",
+                        src_size, src_dim, tgt_size
+                    );
+                    if src_size == 1 && tgt_size != 1 { 0 } else { self.strides[src_dim] }
+                }
+            })
+            .collect();
+        Self {
+            shape: target_shape.to_vec(),
+            strides: new_strides,
+            offset: self.offset,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -361,5 +436,67 @@ mod tests {
     fn ndim() {
         let layout = Layout::contiguous(vec![2, 3, 4]);
         assert_eq!(layout.ndim(), 3);
+    }
+
+    // ── Broadcasting tests ────────────────────────────────────────────────
+
+    #[test]
+    fn broadcast_shapes_same() {
+        assert_eq!(Layout::broadcast_shapes(&[3, 4], &[3, 4]), vec![3, 4]);
+    }
+
+    #[test]
+    fn broadcast_shapes_scalar_to_matrix() {
+        assert_eq!(Layout::broadcast_shapes(&[], &[3, 4]), vec![3, 4]);
+    }
+
+    #[test]
+    fn broadcast_shapes_row_to_matrix() {
+        // [4] broadcasts with [3, 4] → [3, 4]
+        assert_eq!(Layout::broadcast_shapes(&[4], &[3, 4]), vec![3, 4]);
+    }
+
+    #[test]
+    fn broadcast_shapes_col_to_matrix() {
+        // [3, 1] broadcasts with [3, 4] → [3, 4]
+        assert_eq!(Layout::broadcast_shapes(&[3, 1], &[3, 4]), vec![3, 4]);
+    }
+
+    #[test]
+    fn broadcast_shapes_batch() {
+        // [1, 3, 4] with [2, 3, 4] → [2, 3, 4]
+        assert_eq!(Layout::broadcast_shapes(&[1, 3, 4], &[2, 3, 4]), vec![2, 3, 4]);
+    }
+
+    #[test]
+    #[should_panic(expected = "not compatible")]
+    fn broadcast_shapes_incompatible_panics() {
+        Layout::broadcast_shapes(&[3, 4], &[3, 5]);
+    }
+
+    #[test]
+    fn broadcast_to_adds_leading_dim() {
+        // [4] → [3, 4]: prepend dim with stride 0
+        let layout = Layout::contiguous(vec![4]);
+        let bc = layout.broadcast_to(&[3, 4]);
+        assert_eq!(bc.shape, vec![3, 4]);
+        assert_eq!(bc.strides, vec![0, 1]);
+    }
+
+    #[test]
+    fn broadcast_to_size1_dim_gets_stride0() {
+        // [3, 1] → [3, 4]: last dim stride becomes 0
+        let layout = Layout::contiguous(vec![3, 1]);
+        let bc = layout.broadcast_to(&[3, 4]);
+        assert_eq!(bc.shape, vec![3, 4]);
+        assert_eq!(bc.strides[0], 1); // stride for dim-0: 1 element per row (original was 1*1=1)
+        assert_eq!(bc.strides[1], 0); // broadcast dim
+    }
+
+    #[test]
+    fn broadcast_to_no_change_when_already_correct() {
+        let layout = Layout::contiguous(vec![3, 4]);
+        let bc = layout.broadcast_to(&[3, 4]);
+        assert_eq!(bc, layout);
     }
 }
