@@ -45,8 +45,11 @@ fn expand_to_axis(grad: &[f32], in_shape: &[usize], axis: usize) -> Vec<f32> {
     let mut in_indices = vec![0usize; ndim];
 
     for _ in 0..numel {
-        let in_flat: usize =
-            in_indices.iter().zip(in_strides.iter()).map(|(&i, &s)| i * s).sum();
+        let in_flat: usize = in_indices
+            .iter()
+            .zip(in_strides.iter())
+            .map(|(&i, &s)| i * s)
+            .sum();
 
         // Map to grad index by dropping the axis coordinate.
         let out_flat: usize = in_indices
@@ -127,7 +130,11 @@ pub fn sum(ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tensor {
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(SumGrad { in_shape, axis, input_id: a.node }),
+            Box::new(SumGrad {
+                in_shape,
+                axis,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -177,7 +184,11 @@ pub fn mean(ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tensor {
 
     let mean_data: Vec<f32> = sum_data.iter().map(|&s| s / axis_size as f32).collect();
 
-    let storage = Arc::new(crate::tensor::Storage::new(mean_data, a.device(), a.dtype()));
+    let storage = Arc::new(crate::tensor::Storage::new(
+        mean_data,
+        a.device(),
+        a.dtype(),
+    ));
     let layout = if out_shape.is_empty() {
         Layout::contiguous(vec![1])
     } else {
@@ -188,7 +199,12 @@ pub fn mean(ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tensor {
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(MeanGrad { in_shape, axis, axis_size, input_id: a.node }),
+            Box::new(MeanGrad {
+                in_shape,
+                axis,
+                axis_size,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -199,9 +215,9 @@ pub fn mean(ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::autograd::context::Context;
     use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::backend::CpuBackend;
-    use crate::autograd::context::Context;
     use crate::tensor::Device;
 
     fn ctx() -> Context {
@@ -259,7 +275,10 @@ mod tests {
         let mut store = TensorStore::new();
         backward(&tape, &mut store, &out);
         // Each output grad (1.0) is copied to both rows.
-        assert_eq!(a.grad(&store), Some([1.0f32, 1.0, 1.0, 1.0, 1.0, 1.0].as_slice()));
+        assert_eq!(
+            a.grad(&store),
+            Some([1.0f32, 1.0, 1.0, 1.0, 1.0, 1.0].as_slice())
+        );
     }
 
     #[test]

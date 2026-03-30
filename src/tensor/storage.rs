@@ -44,7 +44,11 @@ impl Storage {
 
     /// Wrap an existing `Arc<Vec<f32>>` without copying.
     pub fn from_arc(data: Arc<Vec<f32>>, device: Device, dtype: DType) -> Self {
-        Self { data, device, dtype }
+        Self {
+            data,
+            device,
+            dtype,
+        }
     }
 
     /// Number of elements in the flat buffer.

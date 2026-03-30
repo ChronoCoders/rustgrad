@@ -46,10 +46,8 @@ impl GradFn for MatMulGrad {
     /// `grad_A = grad_out @ B^T`  shape: `[..., m, k]`
     /// `grad_B = A^T   @ grad_out` shape: `[..., k, n]`
     fn backward(&self, grad_output: &[f32]) -> Vec<Vec<f32>> {
-        let a_tmp =
-            Tensor::from_storage(Arc::clone(&self.a_storage), self.a_layout.clone(), false);
-        let b_tmp =
-            Tensor::from_storage(Arc::clone(&self.b_storage), self.b_layout.clone(), false);
+        let a_tmp = Tensor::from_storage(Arc::clone(&self.a_storage), self.a_layout.clone(), false);
+        let b_tmp = Tensor::from_storage(Arc::clone(&self.b_storage), self.b_layout.clone(), false);
         let a_data = a_tmp.to_vec();
         let b_data = b_tmp.to_vec();
 
@@ -206,9 +204,9 @@ pub fn matmul(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::autograd::context::Context;
     use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::backend::CpuBackend;
-    use crate::autograd::context::Context;
     use crate::tensor::Device;
 
     fn ctx() -> Context {
@@ -241,9 +239,7 @@ mod tests {
         // A = [[1,0,0],[0,1,0]], B = identity-ish 3x4
         let a = leaf(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]);
         let b = leaf(
-            vec![1.0, 0.0, 0.0, 0.0,
-                 0.0, 1.0, 0.0, 0.0,
-                 0.0, 0.0, 1.0, 0.0],
+            vec![1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
             vec![3, 4],
         );
         let out = matmul(&ctx, &mut tape, &a, &b);
@@ -260,21 +256,22 @@ mod tests {
         // Batch 0: [[1,2],[3,4]] @ [[1,0],[0,1]] = [[1,2],[3,4]]
         // Batch 1: [[1,0],[0,1]] @ [[5,6],[7,8]] = [[5,6],[7,8]]
         let a = leaf(
-            vec![1.0, 2.0, 3.0, 4.0,  // batch 0
-                 1.0, 0.0, 0.0, 1.0], // batch 1 (identity)
+            vec![
+                1.0, 2.0, 3.0, 4.0, // batch 0
+                1.0, 0.0, 0.0, 1.0,
+            ], // batch 1 (identity)
             vec![2, 2, 2],
         );
         let b = leaf(
-            vec![1.0, 0.0, 0.0, 1.0,  // batch 0 (identity)
-                 5.0, 6.0, 7.0, 8.0], // batch 1
+            vec![
+                1.0, 0.0, 0.0, 1.0, // batch 0 (identity)
+                5.0, 6.0, 7.0, 8.0,
+            ], // batch 1
             vec![2, 2, 2],
         );
         let out = matmul(&ctx, &mut tape, &a, &b);
         assert_eq!(out.shape(), &[2, 2, 2]);
-        assert_eq!(
-            out.to_vec(),
-            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
-        );
+        assert_eq!(out.to_vec(), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
     }
 
     // ── backward ─────────────────────────────────────────────────────────
@@ -335,7 +332,7 @@ mod tests {
         tape.push(Node::leaf(k.node));
         let kt = tr(&ctx, &mut tape, &k, 0, 1); // [3,2]
         let out = matmul(&ctx, &mut tape, &q, &kt); // [2,2]
-        // Q @ Q^T of identity-rows = identity 2x2
+                                                    // Q @ Q^T of identity-rows = identity 2x2
         assert_eq!(out.to_vec(), vec![1.0, 0.0, 0.0, 1.0]);
         let mut store = TensorStore::new();
         backward(&tape, &mut store, &out);

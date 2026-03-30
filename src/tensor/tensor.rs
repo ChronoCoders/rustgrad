@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use crate::autograd::node::{next_node_id, NodeId};
 use crate::autograd::store::TensorStore;
 use crate::tensor::layout::Layout;
-use crate::tensor::storage::{Device, DType, Storage};
+use crate::tensor::storage::{DType, Device, Storage};
 
 /// The central data structure. Represents a multi-dimensional array with
 /// optional gradient tracking.
@@ -73,11 +73,7 @@ impl Tensor {
     /// Construct directly from existing storage and layout.
     ///
     /// Used internally by ops that produce views or new tensors.
-    pub fn from_storage(
-        storage: Arc<Storage>,
-        layout: Layout,
-        requires_grad: bool,
-    ) -> Self {
+    pub fn from_storage(storage: Arc<Storage>, layout: Layout, requires_grad: bool) -> Self {
         Self {
             storage,
             layout,

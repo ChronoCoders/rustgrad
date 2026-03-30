@@ -6,5 +6,5 @@ mod storage;
 mod tensor;
 
 pub use layout::Layout;
-pub use storage::{Device, DType, Storage};
+pub use storage::{DType, Device, Storage};
 pub use tensor::Tensor;

@@ -52,7 +52,10 @@ impl Node {
 
     /// Create an op output node with a gradient function.
     pub fn with_grad_fn(id: NodeId, grad_fn: Box<dyn GradFn>) -> Self {
-        Self { id, grad_fn: Some(grad_fn) }
+        Self {
+            id,
+            grad_fn: Some(grad_fn),
+        }
     }
 
     /// Returns `true` if this is a leaf node (no grad function).

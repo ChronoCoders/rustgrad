@@ -16,7 +16,9 @@ pub struct Tape {
 impl Tape {
     /// Create an empty tape.
     pub fn new() -> Self {
-        Self { nodes: IndexMap::new() }
+        Self {
+            nodes: IndexMap::new(),
+        }
     }
 
     /// Record a node. The caller is responsible for inserting nodes in
@@ -56,7 +58,12 @@ pub fn print_graph(tape: &Tape) {
             .as_ref()
             .map(|gf| gf.input_ids().iter().map(|id| id.to_string()).collect())
             .unwrap_or_default();
-        println!("Node {} [id={}] inputs=[{}]", i, node.id, input_ids.join(", "));
+        println!(
+            "Node {} [id={}] inputs=[{}]",
+            i,
+            node.id,
+            input_ids.join(", ")
+        );
     }
 }
 

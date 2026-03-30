@@ -17,7 +17,9 @@ pub struct TensorStore {
 impl TensorStore {
     /// Create an empty store.
     pub fn new() -> Self {
-        Self { grads: HashMap::new() }
+        Self {
+            grads: HashMap::new(),
+        }
     }
 
     /// Insert or accumulate a gradient for `node_id`.

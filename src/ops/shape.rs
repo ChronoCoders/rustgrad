@@ -43,8 +43,11 @@ fn permute_grad(grad: &[f32], in_shape: &[usize], perm: &[usize]) -> Vec<f32> {
     let mut in_indices = vec![0usize; in_shape.len()];
 
     for _ in 0..numel {
-        let in_flat: usize =
-            in_indices.iter().zip(in_strides.iter()).map(|(&i, &s)| i * s).sum();
+        let in_flat: usize = in_indices
+            .iter()
+            .zip(in_strides.iter())
+            .map(|(&i, &s)| i * s)
+            .sum();
         // Apply perm to in_indices to get out_indices.
         let out_flat: usize = perm
             .iter()
@@ -94,16 +97,14 @@ impl GradFn for ReshapeGrad {
 /// # Panics
 ///
 /// Panics if the tensor is not contiguous, or if element counts differ.
-pub fn reshape(
-    _ctx: &Context,
-    tape: &mut Tape,
-    a: &Tensor,
-    new_shape: Vec<usize>,
-) -> Tensor {
+pub fn reshape(_ctx: &Context, tape: &mut Tape, a: &Tensor, new_shape: Vec<usize>) -> Tensor {
     let new_layout = a.layout.reshape(new_shape); // asserts contiguous + numel match
     let out = Tensor::from_storage(Arc::clone(&a.storage), new_layout, a.requires_grad);
     if a.requires_grad {
-        tape.push(Node::with_grad_fn(out.node, Box::new(ReshapeGrad { input_id: a.node })));
+        tape.push(Node::with_grad_fn(
+            out.node,
+            Box::new(ReshapeGrad { input_id: a.node }),
+        ));
     }
     out
 }
@@ -136,19 +137,18 @@ impl GradFn for PermuteGrad {
 /// # Panics
 ///
 /// Panics if `dims` is not a valid permutation.
-pub fn permute(
-    _ctx: &Context,
-    tape: &mut Tape,
-    a: &Tensor,
-    dims: Vec<usize>,
-) -> Tensor {
+pub fn permute(_ctx: &Context, tape: &mut Tape, a: &Tensor, dims: Vec<usize>) -> Tensor {
     let in_shape = a.shape().to_vec();
     let new_layout = a.layout.permute(&dims);
     let out = Tensor::from_storage(Arc::clone(&a.storage), new_layout, a.requires_grad);
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(PermuteGrad { in_shape, perm: dims, input_id: a.node }),
+            Box::new(PermuteGrad {
+                in_shape,
+                perm: dims,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -188,20 +188,19 @@ impl GradFn for TransposeGrad {
 /// # Panics
 ///
 /// Panics if `dim0` or `dim1` are out of range.
-pub fn transpose(
-    _ctx: &Context,
-    tape: &mut Tape,
-    a: &Tensor,
-    dim0: usize,
-    dim1: usize,
-) -> Tensor {
+pub fn transpose(_ctx: &Context, tape: &mut Tape, a: &Tensor, dim0: usize, dim1: usize) -> Tensor {
     let in_shape = a.shape().to_vec();
     let new_layout = a.layout.transpose(dim0, dim1);
     let out = Tensor::from_storage(Arc::clone(&a.storage), new_layout, a.requires_grad);
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(TransposeGrad { in_shape, dim0, dim1, input_id: a.node }),
+            Box::new(TransposeGrad {
+                in_shape,
+                dim0,
+                dim1,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -233,19 +232,17 @@ impl GradFn for SqueezeGrad {
 /// # Panics
 ///
 /// Panics if `axis` is out of range or its size is not 1.
-pub fn squeeze(
-    _ctx: &Context,
-    tape: &mut Tape,
-    a: &Tensor,
-    axis: Option<usize>,
-) -> Tensor {
+pub fn squeeze(_ctx: &Context, tape: &mut Tape, a: &Tensor, axis: Option<usize>) -> Tensor {
     let in_shape = a.shape().to_vec();
     let new_layout = a.layout.squeeze(axis);
     let out = Tensor::from_storage(Arc::clone(&a.storage), new_layout, a.requires_grad);
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(SqueezeGrad { in_shape, input_id: a.node }),
+            Box::new(SqueezeGrad {
+                in_shape,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -275,19 +272,17 @@ impl GradFn for UnsqueezeGrad {
 /// # Panics
 ///
 /// Panics if `axis > a.ndim()`.
-pub fn unsqueeze(
-    _ctx: &Context,
-    tape: &mut Tape,
-    a: &Tensor,
-    axis: usize,
-) -> Tensor {
+pub fn unsqueeze(_ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tensor {
     let in_shape = a.shape().to_vec();
     let new_layout = a.layout.unsqueeze(axis);
     let out = Tensor::from_storage(Arc::clone(&a.storage), new_layout, a.requires_grad);
     if a.requires_grad {
         tape.push(Node::with_grad_fn(
             out.node,
-            Box::new(UnsqueezeGrad { in_shape, input_id: a.node }),
+            Box::new(UnsqueezeGrad {
+                in_shape,
+                input_id: a.node,
+            }),
         ));
     }
     out
@@ -298,9 +293,9 @@ pub fn unsqueeze(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::autograd::context::Context;
     use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::backend::CpuBackend;
-    use crate::autograd::context::Context;
     use crate::tensor::Device;
 
     fn ctx() -> Context {
@@ -492,7 +487,7 @@ mod tests {
         let a = leaf(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]);
         tape.push(Node::leaf(a.node));
         let t = transpose(&ctx, &mut tape, &a, 0, 1); // [3,2]
-        let s = sum(&ctx, &mut tape, &t, 1);           // [3]
+        let s = sum(&ctx, &mut tape, &t, 1); // [3]
         let mut store = TensorStore::new();
         backward(&tape, &mut store, &s);
         // Each element gets gradient 1.0 (sum passes 1 to all, transpose passes it back).

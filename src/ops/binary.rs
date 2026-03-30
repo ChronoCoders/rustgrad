@@ -83,7 +83,11 @@ fn reduce_to_shape(grad: &[f32], out_shape: &[usize], src_shape: &[usize]) -> Ve
             .filter(|&d| d >= pad)
             .map(|d| {
                 let src_d = d - pad;
-                let idx = if src_shape[src_d] == 1 { 0 } else { out_indices[d] };
+                let idx = if src_shape[src_d] == 1 {
+                    0
+                } else {
+                    out_indices[d]
+                };
                 idx * src_strides[src_d]
             })
             .sum();
@@ -130,7 +134,8 @@ impl GradFn for AddGrad {
 /// Element-wise addition with NumPy-style broadcasting.
 pub fn add(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor {
     assert_eq!(
-        a.device(), b.device(),
+        a.device(),
+        b.device(),
         "add: tensors must be on the same device"
     );
     let out_shape = Layout::broadcast_shapes(a.shape(), b.shape());
@@ -185,7 +190,8 @@ impl GradFn for SubGrad {
 /// Element-wise subtraction with NumPy-style broadcasting.
 pub fn sub(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor {
     assert_eq!(
-        a.device(), b.device(),
+        a.device(),
+        b.device(),
         "sub: tensors must be on the same device"
     );
     let out_shape = Layout::broadcast_shapes(a.shape(), b.shape());
@@ -238,10 +244,16 @@ impl GradFn for MulGrad {
         let b_bc = broadcast_collect(&b_tmp, &self.out_shape);
         let a_bc = broadcast_collect(&a_tmp, &self.out_shape);
 
-        let grad_a_full: Vec<f32> =
-            grad_output.iter().zip(b_bc.iter()).map(|(&g, &b)| g * b).collect();
-        let grad_b_full: Vec<f32> =
-            grad_output.iter().zip(a_bc.iter()).map(|(&g, &a)| g * a).collect();
+        let grad_a_full: Vec<f32> = grad_output
+            .iter()
+            .zip(b_bc.iter())
+            .map(|(&g, &b)| g * b)
+            .collect();
+        let grad_b_full: Vec<f32> = grad_output
+            .iter()
+            .zip(a_bc.iter())
+            .map(|(&g, &a)| g * a)
+            .collect();
 
         vec![
             reduce_to_shape(&grad_a_full, &self.out_shape, &self.a_shape),
@@ -256,7 +268,8 @@ impl GradFn for MulGrad {
 /// Element-wise multiplication with NumPy-style broadcasting.
 pub fn mul(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor {
     assert_eq!(
-        a.device(), b.device(),
+        a.device(),
+        b.device(),
         "mul: tensors must be on the same device"
     );
     let out_shape = Layout::broadcast_shapes(a.shape(), b.shape());
@@ -313,8 +326,11 @@ impl GradFn for DivGrad {
         let b_bc = broadcast_collect(&b_tmp, &self.out_shape);
         let a_bc = broadcast_collect(&a_tmp, &self.out_shape);
 
-        let grad_a_full: Vec<f32> =
-            grad_output.iter().zip(b_bc.iter()).map(|(&g, &b)| g / b).collect();
+        let grad_a_full: Vec<f32> = grad_output
+            .iter()
+            .zip(b_bc.iter())
+            .map(|(&g, &b)| g / b)
+            .collect();
         let grad_b_full: Vec<f32> = grad_output
             .iter()
             .zip(a_bc.iter())
@@ -335,7 +351,8 @@ impl GradFn for DivGrad {
 /// Element-wise division with NumPy-style broadcasting.
 pub fn div(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor {
     assert_eq!(
-        a.device(), b.device(),
+        a.device(),
+        b.device(),
         "div: tensors must be on the same device"
     );
     let out_shape = Layout::broadcast_shapes(a.shape(), b.shape());
@@ -373,9 +390,9 @@ pub fn div(ctx: &Context, tape: &mut Tape, a: &Tensor, b: &Tensor) -> Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::autograd::context::Context;
     use crate::autograd::{backward, TensorStore};
     use crate::backend::CpuBackend;
-    use crate::autograd::context::Context;
 
     fn ctx() -> Context {
         Context::new(Arc::new(CpuBackend), crate::tensor::Device::Cpu)

@@ -64,8 +64,8 @@ pub fn backward(tape: &Tape, store: &mut TensorStore, root: &Tensor) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::autograd::node::{next_node_id, GradFn, Node, NodeId};
     use crate::autograd::graph::Tape;
+    use crate::autograd::node::{next_node_id, GradFn, Node, NodeId};
 
     // A trivial identity grad fn for testing: passes gradient through unchanged.
     struct IdentityGrad {
@@ -105,11 +105,19 @@ mod tests {
 
         // Run backward manually from out_id (skip root seed step).
         for (_id, node) in tape.nodes.iter().rev() {
-            let gf = match &node.grad_fn { Some(g) => g, None => continue };
-            let upstream = match store.get(node.id) { Some(g) => g.to_vec(), None => continue };
+            let gf = match &node.grad_fn {
+                Some(g) => g,
+                None => continue,
+            };
+            let upstream = match store.get(node.id) {
+                Some(g) => g.to_vec(),
+                None => continue,
+            };
             let grads = gf.backward(&upstream);
             let ids = gf.input_ids();
-            for (id, g) in ids.into_iter().zip(grads) { store.accumulate(id, g); }
+            for (id, g) in ids.into_iter().zip(grads) {
+                store.accumulate(id, g);
+            }
         }
 
         let _ = out; // suppress unused warning

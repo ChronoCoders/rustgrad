@@ -20,7 +20,11 @@ impl Layout {
     /// Strides are computed as: `strides[i] = shape[i+1] * … * shape[n-1]`.
     pub fn contiguous(shape: Vec<usize>) -> Self {
         let strides = Self::row_major_strides(&shape);
-        Self { shape, strides, offset: 0 }
+        Self {
+            shape,
+            strides,
+            offset: 0,
+        }
     }
 
     /// Compute row-major strides for the given shape.
@@ -117,7 +121,11 @@ impl Layout {
         }
         let shape = dims.iter().map(|&d| self.shape[d]).collect();
         let strides = dims.iter().map(|&d| self.strides[d]).collect();
-        Self { shape, strides, offset: self.offset }
+        Self {
+            shape,
+            strides,
+            offset: self.offset,
+        }
     }
 
     /// Swap two axes. Equivalent to `permute` with two axes swapped.
@@ -185,10 +193,18 @@ impl Layout {
         let mut strides = self.strides.clone();
         // The stride for the new size-1 dim does not affect addressing;
         // use the stride of the next dim, or 1 if inserting at the end.
-        let new_stride = if axis < self.ndim() { self.strides[axis] } else { 1 };
+        let new_stride = if axis < self.ndim() {
+            self.strides[axis]
+        } else {
+            1
+        };
         shape.insert(axis, 1);
         strides.insert(axis, new_stride);
-        Self { shape, strides, offset: self.offset }
+        Self {
+            shape,
+            strides,
+            offset: self.offset,
+        }
     }
 
     /// Remove all size-1 dimensions, or a specific one if `axis` is given.
@@ -206,7 +222,11 @@ impl Layout {
                     .zip(self.strides.iter())
                     .filter(|(&s, _)| s != 1)
                     .unzip();
-                Self { shape, strides, offset: self.offset }
+                Self {
+                    shape,
+                    strides,
+                    offset: self.offset,
+                }
             }
             Some(ax) => {
                 assert!(
@@ -224,7 +244,11 @@ impl Layout {
                 let mut strides = self.strides.clone();
                 shape.remove(ax);
                 strides.remove(ax);
-                Self { shape, strides, offset: self.offset }
+                Self {
+                    shape,
+                    strides,
+                    offset: self.offset,
+                }
             }
         }
     }
@@ -242,8 +266,16 @@ impl Layout {
         let len = a.len().max(b.len());
         (0..len)
             .map(|i| {
-                let da = if i < len - a.len() { 1 } else { a[i - (len - a.len())] };
-                let db = if i < len - b.len() { 1 } else { b[i - (len - b.len())] };
+                let da = if i < len - a.len() {
+                    1
+                } else {
+                    a[i - (len - a.len())]
+                };
+                let db = if i < len - b.len() {
+                    1
+                } else {
+                    b[i - (len - b.len())]
+                };
                 match (da, db) {
                     (x, y) if x == y => x,
                     (1, y) => y,
@@ -291,9 +323,15 @@ impl Layout {
                         src_size == tgt_size || src_size == 1,
                         "broadcast_to: source size {} at dim {} is not compatible \
                          with target size {}",
-                        src_size, src_dim, tgt_size
+                        src_size,
+                        src_dim,
+                        tgt_size
                     );
-                    if src_size == 1 && tgt_size != 1 { 0 } else { self.strides[src_dim] }
+                    if src_size == 1 && tgt_size != 1 {
+                        0
+                    } else {
+                        self.strides[src_dim]
+                    }
                 }
             })
             .collect();
@@ -465,7 +503,10 @@ mod tests {
     #[test]
     fn broadcast_shapes_batch() {
         // [1, 3, 4] with [2, 3, 4] → [2, 3, 4]
-        assert_eq!(Layout::broadcast_shapes(&[1, 3, 4], &[2, 3, 4]), vec![2, 3, 4]);
+        assert_eq!(
+            Layout::broadcast_shapes(&[1, 3, 4], &[2, 3, 4]),
+            vec![2, 3, 4]
+        );
     }
 
     #[test]
