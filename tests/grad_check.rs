@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use rustgrad::autograd::{backward, Context, Node, Tape, TensorStore};
 use rustgrad::backend::CpuBackend;
+use rustgrad::ops::attention::scaled_dot_product_attention;
 use rustgrad::ops::binary::{add, div, mul, sub};
+use rustgrad::ops::embedding::embedding;
 use rustgrad::ops::matmul::matmul;
+use rustgrad::ops::norm::layer_norm;
 use rustgrad::ops::reduction::{mean, sum};
 use rustgrad::ops::shape::{permute, reshape, squeeze, transpose, unsqueeze};
-use rustgrad::ops::attention::scaled_dot_product_attention;
-use rustgrad::ops::embedding::embedding;
-use rustgrad::ops::norm::layer_norm;
 use rustgrad::ops::unary::softmax;
 use rustgrad::tensor::{Device, Tensor};
 
@@ -557,52 +557,82 @@ fn test_grad_check_sdpa() {
 
     // ── Numerical ────────────────────────────────────────────────────────────
     let num_q = numerical_grad(&q_data, {
-        let k = k_data.clone(); let v = v_data.clone();
-        let qs = q_shape.clone(); let ks = k_shape.clone(); let vs = v_shape.clone();
+        let k = k_data.clone();
+        let v = v_data.clone();
+        let qs = q_shape.clone();
+        let ks = k_shape.clone();
+        let vs = v_shape.clone();
         move |qd| {
             let qt = Tensor::from_vec(qd, qs.clone(), Device::Cpu);
             let kt = Tensor::from_vec(k.clone(), ks.clone(), Device::Cpu);
             let vt = Tensor::from_vec(v.clone(), vs.clone(), Device::Cpu);
-            let ctx = cpu_ctx(); let mut tape = Tape::new();
+            let ctx = cpu_ctx();
+            let mut tape = Tape::new();
             scaled_dot_product_attention(&ctx, &mut tape, &qt, &kt, &vt).to_vec()
         }
     });
 
     let num_k = numerical_grad(&k_data, {
-        let q = q_data.clone(); let v = v_data.clone();
-        let qs = q_shape.clone(); let ks = k_shape.clone(); let vs = v_shape.clone();
+        let q = q_data.clone();
+        let v = v_data.clone();
+        let qs = q_shape.clone();
+        let ks = k_shape.clone();
+        let vs = v_shape.clone();
         move |kd| {
             let qt = Tensor::from_vec(q.clone(), qs.clone(), Device::Cpu);
             let kt = Tensor::from_vec(kd, ks.clone(), Device::Cpu);
             let vt = Tensor::from_vec(v.clone(), vs.clone(), Device::Cpu);
-            let ctx = cpu_ctx(); let mut tape = Tape::new();
+            let ctx = cpu_ctx();
+            let mut tape = Tape::new();
             scaled_dot_product_attention(&ctx, &mut tape, &qt, &kt, &vt).to_vec()
         }
     });
 
     let num_v = numerical_grad(&v_data, {
-        let q = q_data.clone(); let k = k_data.clone();
-        let qs = q_shape.clone(); let ks = k_shape.clone(); let vs = v_shape.clone();
+        let q = q_data.clone();
+        let k = k_data.clone();
+        let qs = q_shape.clone();
+        let ks = k_shape.clone();
+        let vs = v_shape.clone();
         move |vd| {
             let qt = Tensor::from_vec(q.clone(), qs.clone(), Device::Cpu);
             let kt = Tensor::from_vec(k.clone(), ks.clone(), Device::Cpu);
             let vt = Tensor::from_vec(vd, vs.clone(), Device::Cpu);
-            let ctx = cpu_ctx(); let mut tape = Tape::new();
+            let ctx = cpu_ctx();
+            let mut tape = Tape::new();
             scaled_dot_product_attention(&ctx, &mut tape, &qt, &kt, &vt).to_vec()
         }
     });
 
     // ── Compare ──────────────────────────────────────────────────────────────
-    let max_q = analytic_q.iter().zip(num_q.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
-    let max_k = analytic_k.iter().zip(num_k.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
-    let max_v = analytic_v.iter().zip(num_v.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
+    let max_q = analytic_q
+        .iter()
+        .zip(num_q.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
+    let max_k = analytic_k
+        .iter()
+        .zip(num_k.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
+    let max_v = analytic_v
+        .iter()
+        .zip(num_v.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
 
-    assert!(max_q < TOL, "sdpa grad_q FAIL — max_diff={max_q:.6}\n  analytic={analytic_q:?}\n  numeric={num_q:?}");
-    assert!(max_k < TOL, "sdpa grad_k FAIL — max_diff={max_k:.6}\n  analytic={analytic_k:?}\n  numeric={num_k:?}");
-    assert!(max_v < TOL, "sdpa grad_v FAIL — max_diff={max_v:.6}\n  analytic={analytic_v:?}\n  numeric={num_v:?}");
+    assert!(
+        max_q < TOL,
+        "sdpa grad_q FAIL — max_diff={max_q:.6}\n  analytic={analytic_q:?}\n  numeric={num_q:?}"
+    );
+    assert!(
+        max_k < TOL,
+        "sdpa grad_k FAIL — max_diff={max_k:.6}\n  analytic={analytic_k:?}\n  numeric={num_k:?}"
+    );
+    assert!(
+        max_v < TOL,
+        "sdpa grad_v FAIL — max_diff={max_v:.6}\n  analytic={analytic_v:?}\n  numeric={num_v:?}"
+    );
 
     println!("PASS: sdpa grad_check — max_diff_q={max_q:.6}, max_diff_k={max_k:.6}, max_diff_v={max_v:.6}");
 }
@@ -615,7 +645,9 @@ fn test_grad_check_sdpa() {
 #[test]
 fn test_grad_check_layer_norm() {
     // Shape [3, 4]: 3 batch slices, each normalized over 4 features.
-    let x_data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, -1.0, 0.5, 2.0, -0.5, 3.0, 1.0, -2.0, 0.0];
+    let x_data: Vec<f32> = vec![
+        1.0, 2.0, 3.0, 4.0, -1.0, 0.5, 2.0, -0.5, 3.0, 1.0, -2.0, 0.0,
+    ];
     let w_data: Vec<f32> = vec![0.8, 1.2, 0.5, 1.0];
     let b_data: Vec<f32> = vec![0.1, -0.2, 0.3, 0.0];
     let x_shape = vec![3usize, 4];
@@ -685,12 +717,21 @@ fn test_grad_check_layer_norm() {
     });
 
     // ── Compare ──────────────────────────────────────────────────────────────
-    let max_x = analytic_x.iter().zip(num_x.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
-    let max_w = analytic_w.iter().zip(num_w.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
-    let max_b = analytic_b.iter().zip(num_b.iter())
-        .map(|(a, n)| (a - n).abs()).fold(0.0f32, f32::max);
+    let max_x = analytic_x
+        .iter()
+        .zip(num_x.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
+    let max_w = analytic_w
+        .iter()
+        .zip(num_w.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
+    let max_b = analytic_b
+        .iter()
+        .zip(num_b.iter())
+        .map(|(a, n)| (a - n).abs())
+        .fold(0.0f32, f32::max);
 
     assert!(max_x < TOL, "layer_norm grad_x FAIL — max_diff={max_x:.6}\n  analytic={analytic_x:?}\n  numeric={num_x:?}");
     assert!(max_w < TOL, "layer_norm grad_weight FAIL — max_diff={max_w:.6}\n  analytic={analytic_w:?}\n  numeric={num_w:?}");

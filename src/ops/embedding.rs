@@ -102,7 +102,14 @@ pub fn embedding(
     // Delegate the gather to the backend (honours the no-direct-arithmetic rule).
     // _ctx.backend is unused here since embedding is pure indexed copy, but we
     // call through the backend for future GPU compatibility.
-    _ctx.backend.embedding_forward(&w_data, indices, &mut out_data, num_tokens, embed_dim, vocab_size);
+    _ctx.backend.embedding_forward(
+        &w_data,
+        indices,
+        &mut out_data,
+        num_tokens,
+        embed_dim,
+        vocab_size,
+    );
 
     let mut out_shape = index_shape.clone();
     out_shape.push(embed_dim);
@@ -152,9 +159,9 @@ mod tests {
         let mut tape = Tape::new();
         let weight = leaf(
             vec![
-                1.0, 2.0, 3.0,  // row 0
-                4.0, 5.0, 6.0,  // row 1
-                7.0, 8.0, 9.0,  // row 2
+                1.0, 2.0, 3.0, // row 0
+                4.0, 5.0, 6.0, // row 1
+                7.0, 8.0, 9.0, // row 2
                 10.0, 11.0, 12.0, // row 3
             ],
             vec![4, 3],

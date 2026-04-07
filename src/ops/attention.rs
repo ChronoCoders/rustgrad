@@ -114,8 +114,7 @@ impl GradFn for SdpaGrad {
                         dot += d_attn[r * sk + c] * aw_slice[r * sk + c];
                     }
                     for c in 0..sk {
-                        d_scores[r * sk + c] =
-                            aw_slice[r * sk + c] * (d_attn[r * sk + c] - dot);
+                        d_scores[r * sk + c] = aw_slice[r * sk + c] * (d_attn[r * sk + c] - dot);
                     }
                 }
 

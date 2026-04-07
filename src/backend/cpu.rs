@@ -480,8 +480,16 @@ mod tests {
         let mut aw = [0.0f32; 4];
         b.sdpa_forward(&q, &k, &v, &mut out, &mut aw, 1, 1, 2, 2, 2, 2);
         // Each attention row sums to 1.
-        assert!((aw[0] + aw[1] - 1.0).abs() < 1e-5, "row0 sum = {}", aw[0] + aw[1]);
-        assert!((aw[2] + aw[3] - 1.0).abs() < 1e-5, "row1 sum = {}", aw[2] + aw[3]);
+        assert!(
+            (aw[0] + aw[1] - 1.0).abs() < 1e-5,
+            "row0 sum = {}",
+            aw[0] + aw[1]
+        );
+        assert!(
+            (aw[2] + aw[3] - 1.0).abs() < 1e-5,
+            "row1 sum = {}",
+            aw[2] + aw[3]
+        );
         // Diagonal dominates (matching query attends to itself).
         assert!(aw[0] > aw[1], "aw[0]={} should > aw[1]={}", aw[0], aw[1]);
     }
@@ -503,7 +511,10 @@ mod tests {
         let mut aw = vec![0.0f32; batch * heads * sq * sk];
         b.sdpa_forward(&q, &k, &v, &mut out, &mut aw, batch, heads, sq, sk, dk, dv);
         // Output contains no NaN/Inf.
-        assert!(out.iter().all(|x| x.is_finite()), "output has non-finite values");
+        assert!(
+            out.iter().all(|x| x.is_finite()),
+            "output has non-finite values"
+        );
         // All attention weight rows sum to 1.
         for row_start in (0..aw.len()).step_by(sk) {
             let s: f32 = aw[row_start..row_start + sk].iter().sum();
@@ -542,7 +553,11 @@ mod tests {
         b.layer_norm(&x, &weight, &bias, &mut out, &mut xn, &mut rstd, 1, 4, 1e-5);
         for i in 0..4 {
             let expected = 2.0 * xn[i] + 1.0;
-            assert!((out[i] - expected).abs() < 1e-5, "out[{i}]={} expected={expected}", out[i]);
+            assert!(
+                (out[i] - expected).abs() < 1e-5,
+                "out[{i}]={} expected={expected}",
+                out[i]
+            );
         }
     }
 
@@ -565,7 +580,12 @@ mod tests {
         }
         // Both normalized outputs should be identical (same relative spread).
         for i in 0..4 {
-            assert!((out[i] - out[4 + i]).abs() < 1e-4, "row0[{i}]={} row1[{i}]={}", out[i], out[4 + i]);
+            assert!(
+                (out[i] - out[4 + i]).abs() < 1e-4,
+                "row0[{i}]={} row1[{i}]={}",
+                out[i],
+                out[4 + i]
+            );
         }
     }
 
@@ -583,7 +603,10 @@ mod tests {
         assert!((row1 - 1.0).abs() < 1e-6, "row1 sum={row1}");
         // Uniform row: all 1/3.
         for &v in &out[3..] {
-            assert!((v - 1.0 / 3.0).abs() < 1e-6, "uniform row: expected 1/3, got {v}");
+            assert!(
+                (v - 1.0 / 3.0).abs() < 1e-6,
+                "uniform row: expected 1/3, got {v}"
+            );
         }
     }
 
@@ -598,7 +621,11 @@ mod tests {
         for col in 0..3 {
             let sum = out[col] + out[3 + col];
             assert!((sum - 1.0).abs() < 1e-6, "col{col} sum={sum}");
-            assert!((out[col] - 0.5).abs() < 1e-6, "expected 0.5, got {}", out[col]);
+            assert!(
+                (out[col] - 0.5).abs() < 1e-6,
+                "expected 0.5, got {}",
+                out[col]
+            );
         }
     }
 

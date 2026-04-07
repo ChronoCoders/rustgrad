@@ -111,8 +111,8 @@ pub fn softmax(ctx: &Context, tape: &mut Tape, a: &Tensor, axis: usize) -> Tenso
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::autograd::context::Context;
+    use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::backend::CpuBackend;
     use crate::tensor::Device;
 

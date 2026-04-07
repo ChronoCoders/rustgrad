@@ -139,11 +139,9 @@ pub fn layer_norm(
     );
     let trailing = &x_shape[x_shape.len() - norm_ndim..];
     assert_eq!(
-        trailing,
-        norm_shape,
+        trailing, norm_shape,
         "layer_norm: x trailing shape {:?} != normalized shape {:?}",
-        trailing,
-        norm_shape
+        trailing, norm_shape
     );
 
     let norm_size: usize = norm_shape.iter().product();
@@ -200,8 +198,8 @@ pub fn layer_norm(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::autograd::context::Context;
+    use crate::autograd::{backward, Node, Tape, TensorStore};
     use crate::backend::CpuBackend;
     use crate::tensor::Device;
 
