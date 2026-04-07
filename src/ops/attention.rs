@@ -301,9 +301,9 @@ mod tests {
         // [1,2,3,4] × [1,2,5,4] → [1,2,3,6]
         let ctx = ctx();
         let mut tape = Tape::new();
-        let q = leaf(vec![0.1f32; 1 * 2 * 3 * 4], vec![1, 2, 3, 4]);
-        let k = leaf(vec![0.1f32; 1 * 2 * 5 * 4], vec![1, 2, 5, 4]);
-        let v = leaf(vec![0.1f32; 1 * 2 * 5 * 6], vec![1, 2, 5, 6]);
+        let q = leaf(vec![0.1f32; 24], vec![1, 2, 3, 4]);
+        let k = leaf(vec![0.1f32; 40], vec![1, 2, 5, 4]);
+        let v = leaf(vec![0.1f32; 60], vec![1, 2, 5, 6]);
         let out = scaled_dot_product_attention(&ctx, &mut tape, &q, &k, &v);
         assert_eq!(out.shape(), &[1, 2, 3, 6]);
     }

@@ -102,6 +102,7 @@ where
 
 /// Check the gradient for both inputs of a binary op.
 /// Returns (max_diff_a, max_diff_b).
+#[allow(clippy::too_many_arguments)]
 fn check_grad_2<F>(
     a_data: Vec<f32>,
     a_shape: Vec<usize>,
@@ -168,7 +169,7 @@ fn test_grad_check_add() {
         vec![4],
         b.clone(),
         vec![4],
-        |ctx, tape, a, b| add(ctx, tape, a, b),
+        add,
         {
             let b = b.clone();
             move |a_data| a_data.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
@@ -191,7 +192,7 @@ fn test_grad_check_sub() {
         vec![4],
         b.clone(),
         vec![4],
-        |ctx, tape, a, b| sub(ctx, tape, a, b),
+        sub,
         {
             let b = b.clone();
             move |a_data| a_data.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
@@ -214,7 +215,7 @@ fn test_grad_check_mul() {
         vec![4],
         b.clone(),
         vec![4],
-        |ctx, tape, a, b| mul(ctx, tape, a, b),
+        mul,
         {
             let b = b.clone();
             move |a_data| a_data.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
@@ -238,7 +239,7 @@ fn test_grad_check_div() {
         vec![4],
         b.clone(),
         vec![4],
-        |ctx, tape, a, b| div(ctx, tape, a, b),
+        div,
         {
             let b = b.clone();
             move |a_data| a_data.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
@@ -262,7 +263,7 @@ fn test_grad_check_add_broadcast() {
         vec![2, 3],
         b_data.clone(),
         vec![3],
-        |ctx, tape, a, b| add(ctx, tape, a, b),
+        add,
         {
             let b = b_data.clone();
             move |a_data| {
@@ -712,7 +713,7 @@ fn test_grad_check_matmul() {
         a_shape.clone(),
         b_data.clone(),
         b_shape.clone(),
-        |ctx, tape, a, b| matmul(ctx, tape, a, b),
+        matmul,
         {
             let b = b_data.clone();
             let b_shape = b_shape.clone();
@@ -755,7 +756,7 @@ fn test_grad_check_matmul_batched() {
         a_shape.clone(),
         b_data.clone(),
         b_shape.clone(),
-        |ctx, tape, a, b| matmul(ctx, tape, a, b),
+        matmul,
         {
             let b = b_data.clone();
             let b_shape = b_shape.clone();
